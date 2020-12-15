@@ -46,12 +46,9 @@ fun main(vararg args: String) {
         }
 
         val panelClosed = event { name("panelClosed") }
-
         transitions {
             idle { doorClosed to activeState }
-            activeState {
-                drawerOpened to waitingForLightState
-            }
+            activeState { drawerOpened to waitingForLightState }
             activeState { lightsOn .. waitingForDrawerState }
             waitingForLightState { lightsOn to unlockedPanelState }
             waitingForDrawerState { drawerOpened to unlockedPanelState }

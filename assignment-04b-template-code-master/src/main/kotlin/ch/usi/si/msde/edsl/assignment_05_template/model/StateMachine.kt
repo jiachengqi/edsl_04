@@ -14,6 +14,10 @@ data class Name(val value: String)
  */
 abstract class NamedEntity(var name: Name? = null) {
 
+    fun name(nameString: String){
+        this.name = Name(nameString)
+    }
+
 }
 
 abstract class AbstractEvent(name: Name? = null): NamedEntity(name)
@@ -24,7 +28,9 @@ abstract class AbstractEvent(name: Name? = null): NamedEntity(name)
  * @param name The name of the command.
  */
 class Command(name: Name? = null): AbstractEvent(name) {
+
     override fun toString() = "c(${name?.value})"
+
 }
 
 /**
@@ -34,12 +40,12 @@ class Command(name: Name? = null): AbstractEvent(name) {
  * @param guard The optional guard on counters that activates the event.
  * @param effect the optional effect on counters of this transition.
  */
-class Event(name: Name? = null, var guard: () -> Boolean = { true }, var effect: () -> Unit = {}): AbstractEvent(name) {
+class Event(name: Name? = null, private var guard: () -> Boolean = { true }, private var effect: () -> Unit = {}): AbstractEvent(name) {
 
-    fun name(value: String) {this.name = Name(value)}
     fun guard(value: () -> Boolean) {this.guard = value}
     fun effect(value: () -> Unit) {this.effect = value}
-
+    operator fun rangeTo(state: State): EventToState = to(state)
+    infix fun to(state: State): EventToState = EventToState(this, state)
     override fun toString() = "e(${name?.value})"
 
 }
@@ -50,13 +56,11 @@ class Event(name: Name? = null, var guard: () -> Boolean = { true }, var effect:
  * @param name The name of the state.
  * @param commands The set of commands sent by this state to the environment.
  */
- class State(name: Name? = null, var initial: Boolean = false, val commands: Set<Command> = setOf()): NamedEntity(name) {
+ class State(name: Name? = null, var initial: Boolean = false, private val commands: Set<Command> = setOf()): NamedEntity(name) {
 
-    fun initial() {this.initial = true}
-    fun name(value: String) {this.name = Name(value)}
-    operator fun invoke(function: () -> Pair<Event, State>): Transition {}
-
+    fun initial() { this.initial = true }
     override fun toString() = "s(${name?.value},cs(${commands}))"
+
 }
 
 /**
@@ -67,7 +71,9 @@ class Event(name: Name? = null, var guard: () -> Boolean = { true }, var effect:
  * @param target the target state.
  */
 data class Transition(val source: State, val trigger: Event, val target: State) {
+
     override fun toString() = "$source -${trigger}-> $target"
+
 }
 
 /**
@@ -99,49 +105,44 @@ data class StateMachine(var initialState: State? = null,
         return event
     }
 
-    fun transitions(init: Transitions.() -> Unit): Transitions {
+    fun transitions(init: Transitions.() -> Unit): List<Transition> {
         val transitions = Transitions()
         transitions.init()
-        return transitions
+        this.transitions = transitions.transitions
+        return this.transitions
     }
+
 }
-
-
 
 /**
  * An event and State pair.
  */
-class EventToState(var event: Event? = null, var target: State? = null) {
-    fun to(value1: Event, value2: State){
-        value2.invoke {  }
-
-    }
-}
+class EventToState(var event: Event? = null, var target: State? = null)
 
 /**
  * Represents a set of transitions.
  */
-class Transitions(var transitions: MutableList<Transition> = mutableListOf<Transition>()) {
-    fun transition(init: State): Transition {
-        val transition = init.invoke()
-        this.transitions.add(transition)
+class Transitions(var transitions: MutableList<Transition> = mutableListOf()) {
+
+    operator fun State.invoke(eventToStateAction: () -> EventToState): Transition {
+        val eventToState = eventToStateAction()
+        val transition = Transition(this, eventToState.event!!, eventToState.target!!)
+        transitions.add(transition)
         return transition
     }
+
 }
 
-class Counter(name: Name? = null, var initialValue: Int = 0): NamedEntity(name) {
+class Counter(name: Name? = null, private var initialValue: Int = 0): NamedEntity(name) {
+
     var value: Int = initialValue
         get() = field
         set(value) {
             field = value
         }
 
-    fun name(value: String) {this.name = Name(value)}
-    fun initialValue(value: Int) {this.initialValue = value}
-    operator fun compareTo(value: Int): Int {
-        if (this.initialValue > value) return 1;
-        else if (this.initialValue == value) return 0;
-        else return -1
-    }
-    operator fun plusAssign(value: Int){this.initialValue+=value}
+    fun initialValue(value: Int) { this.initialValue = value }
+    operator fun compareTo(value: Int): Int = initialValue.compareTo(value)
+    operator fun plusAssign(value: Int) { this.initialValue+=value }
+
 }
