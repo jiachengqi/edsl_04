@@ -1,4 +1,4 @@
-package ch.usi.si.msde.edsl.lecture12.dsl
+package ch.usi.si.msde.edsl.assignment_05_template.dsl
 
 import ch.usi.si.msde.edsl.assignment_05_template.model.StateMachine
 
@@ -48,8 +48,10 @@ fun main(vararg args: String) {
         val panelClosed = event { name("panelClosed") }
         transitions {
             idle { doorClosed to activeState }
-            activeState { drawerOpened to waitingForLightState }
-            activeState { lightsOn .. waitingForDrawerState }
+            activeState {
+                drawerOpened to waitingForLightState
+                lightsOn .. waitingForDrawerState
+            }
             waitingForLightState { lightsOn to unlockedPanelState }
             waitingForDrawerState { drawerOpened to unlockedPanelState }
             unlockedPanelState { panelClosed to idle }
